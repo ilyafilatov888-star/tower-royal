@@ -6,8 +6,10 @@
 <title>Tower Royal</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏰</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&display=swap" rel="stylesheet">
+<!-- PeerJS: WebRTC-соединение двух игроков по коду комнаты, без своего сервера -->
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <style>
-:root{--bg:#120d1a;--panel:#1e1530;--edge:#3a2a5c;--gold:#e8c15a;--vio:#7b4fd0;--txt:#efe7d6;--red:#c0392b;box-sizing:border-box}
+:root{--bg:#120d1a;--panel:#1e1530;--edge:#3a2a5c;--gold:#e8c15a;--vio:#7b4fd0;--txt:#efe7d6}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;background:var(--bg);color:var(--txt);font-family:Cinzel,Georgia,serif;overflow:hidden;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 body{display:flex;flex-direction:column;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
@@ -17,18 +19,40 @@ button{font-family:inherit;color:var(--txt);background:#2c2046;border:1px solid 
 button:active{background:var(--vio)}
 button:disabled{opacity:.4}
 #go{background:var(--vio);border-color:var(--gold)}
-#stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+#stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;position:relative}
 canvas{display:block;touch-action:none}
-#sel{display:none;gap:8px;padding:6px 10px;background:#2a1d44;align-items:center;justify-content:space-between;font-size:13px}
 #panel{background:var(--panel);border-top:1px solid var(--edge);padding:6px;display:flex;flex-direction:column;gap:6px}
 .row{display:flex;gap:6px}
-.row button{flex:1;padding:4px 2px;line-height:1.15;font-size:12px}
-.row button.on{border-color:var(--gold);background:#3b2a63}
+.row button{flex:1;padding:4px 2px;line-height:1.15;font-size:12px;background:linear-gradient(160deg,#3b2a63,#1e1530);border:1.5px solid var(--gold)}
+.row button.on{box-shadow:0 0 10px var(--gold)}
 .row small{display:block;color:var(--gold);font-size:11px}
-#ov{position:fixed;inset:0;background:rgba(10,6,16,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px;z-index:5}
-#ov h1{font-size:38px;font-weight:800;margin:0;color:var(--gold);letter-spacing:1px}
-#ov p{margin:0;max-width:300px;line-height:1.5;opacity:.85;font-size:14px}
-#ov button{min-width:240px;font-size:16px}
+
+/* Карточка выбранной башни: тёмно-фиолетовый фон + золотая рамка */
+#card{position:absolute;left:8px;right:8px;max-width:360px;margin:0 auto;display:flex;gap:10px;padding:10px;border-radius:14px;border:2px solid var(--gold);background:linear-gradient(160deg,#3b2a63 0%,#1e1530 75%);box-shadow:0 6px 22px rgba(0,0,0,.65),inset 0 0 14px rgba(232,193,90,.25);z-index:3}
+#card.bot{bottom:8px}
+#card.top{top:8px}
+#cimg{width:88px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:10px;background:radial-gradient(circle at 50% 75%,rgba(123,79,208,.55),transparent 72%)}
+#cpic{max-width:100%;max-height:120px;object-fit:contain;display:block}
+#cico{font-size:48px}
+#cinfo{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;padding-right:18px}
+#ctitle{color:var(--gold);font-weight:800;font-size:15px}
+#cstat{font-size:12px}
+#cdesc{font-size:11px;opacity:.75;line-height:1.3}
+#cbtn{display:flex;gap:6px;margin-top:auto}
+#cbtn button{flex:1;min-height:40px;padding:4px;font-size:12px;background:linear-gradient(160deg,#3b2a63,#1e1530);border:1.5px solid var(--gold)}
+#cx{position:absolute;top:0;right:2px;min-height:34px;padding:0 8px;background:none;border:none;font-size:16px;color:var(--gold)}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.04);box-shadow:0 0 30px var(--gold)}100%{transform:scale(1)}}
+#card.pulse{animation:pop .6s}
+
+#ov{position:fixed;inset:0;background:rgba(10,6,16,.94);display:flex;align-items:center;justify-content:center;padding:24px;z-index:5}
+.menu{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;width:100%;max-width:320px}
+.menu h1{font-size:36px;font-weight:800;margin:0;color:var(--gold);letter-spacing:1px}
+.menu p{margin:0;line-height:1.5;opacity:.85;font-size:14px}
+.menu button{width:100%;font-size:16px}
+.join{display:flex;gap:8px;width:100%}
+.join input{flex:1;min-width:0;font-family:inherit;font-size:20px;font-weight:800;letter-spacing:4px;text-align:center;text-transform:uppercase;color:var(--gold);background:#1e1530;border:1.5px solid var(--edge);border-radius:8px;padding:8px}
+.join button{width:auto;flex:none}
+#roomCode{font-size:54px;letter-spacing:8px}
 .hide{display:none!important}
 </style>
 </head>
@@ -37,51 +61,85 @@ canvas{display:block;touch-action:none}
   <span>🏰 <b id="hp">100</b></span><span>💰 <b id="gold">0</b></span><span>Волна <b id="wv">0/15</b></span>
   <button id="spd">1x</button><button id="go">Старт</button>
 </div>
-<div id="stage"><canvas id="c"></canvas></div>
-<div id="sel"><span id="selTxt"></span><span style="display:flex;gap:6px"><button id="up"></button><button id="sell"></button></span></div>
+<div id="stage">
+  <canvas id="c"></canvas>
+  <div id="card" class="hide bot">
+    <button id="cx" aria-label="Закрыть">✕</button>
+    <div id="cimg"><img id="cpic" alt=""><span id="cico"></span></div>
+    <div id="cinfo">
+      <div id="ctitle"></div><div id="cstat"></div><div id="cdesc"></div>
+      <div id="cbtn"><button id="up"></button><button id="sell"></button></div>
+    </div>
+  </div>
+</div>
 <div id="panel"><div class="row" id="tRow"></div><div class="row" id="hRow"></div></div>
+
 <div id="ov">
-  <h1>Tower Royal</h1>
-  <p>Тёмное фэнтези. Защитите королевский замок от проклятых орд: ставьте башни на площадки у дороги и вызывайте героев.</p>
-  <p id="st" style="color:var(--gold)">⏳ Скрипт не запущен. Откройте файл в Safari или Chrome, а не в предпросмотре.</p>
-  <button id="play" type="button">Играть</button>
-  <button disabled>Кооп по коду комнаты (скоро)</button>
+  <div id="m-main" class="menu">
+    <h1>Tower Royal</h1>
+    <p>Тёмное фэнтези. Защитите королевский замок от проклятых орд вместе с другом или в одиночку.</p>
+    <button id="play" type="button">Одиночная игра</button>
+    <button id="mkRoom" type="button">Создать комнату</button>
+    <div class="join"><input id="code" maxlength="5" placeholder="КОД" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false"><button id="join" type="button">Подключиться</button></div>
+    <p id="st" style="color:var(--gold)">⏳ Скрипт не запущен. Откройте страницу в Safari или Chrome.</p>
+  </div>
+  <div id="m-wait" class="menu hide">
+    <p>Код комнаты — передайте его второму игроку:</p>
+    <h1 id="roomCode"></h1>
+    <p>Ждём подключения…</p>
+    <button id="cancel" type="button">Отмена</button>
+  </div>
+  <div id="m-end" class="menu hide">
+    <h1 id="endT"></h1><p id="endP"></p>
+    <button id="again" type="button"></button>
+  </div>
 </div>
 
 <script>
 'use strict';
+// Показываем JS-ошибки на экране меню (на iPhone нет консоли)
 window.addEventListener('error', e => {
   const s = document.getElementById('st');
   if (s) { s.style.display = 'block'; s.style.color = '#ff7b7b'; s.textContent = 'Ошибка: ' + e.message + ' (строка ' + e.lineno + ')'; }
 });
+
+/* ====================== КАРТИНКИ ======================
+   Картинки башен для карточки лежат в корне репозитория (TOWER_PIC).
+   На карте башни рисуются сверху (top-down) кодом. Если появятся свои
+   top-down спрайты — добавьте их в ASSETS: top_archer, top_ice, top_fire, top_holy, top_arcane
+   (также bg, castlePlayer, castleEnemy) — они заменят рисунок автоматически. */
 const ENABLE_ASSETS = true;
-const ASSETS = { bg:'assets/bg.png', castlePlayer:'assets/castle_player.png', castleEnemy:'assets/castle_enemy.png',
-  t_archer:'https://i.ibb.co/jZQRjNkW/IMG-4484.jpg', t_ice:'https://i.ibb.co/TMq0T2Nh/IMG-4483.jpg',
-  t_fire:'https://i.ibb.co/sdW3BN23/IMG-4482.jpg', t_holy:'https://i.ibb.co/cXspFD2g/IMG-4485.jpg',
-  m_knight:'assets/m_knight.png', m_boss:'assets/m_boss.png', h_knight:'assets/h_knight.png' };
+const ASSETS = {
+  // top_archer:'top_archer.png', top_ice:'top_ice.png', top_fire:'top_fire.png', top_holy:'top_holy.png',
+  // bg:'bg.png', castlePlayer:'castle_player.png', castleEnemy:'castle_enemy.png'
+};
+const TOWER_PIC = { archer:'tower_archer.png', ice:'tower_ice.png', fire:'tower_fire.png', holy:'tower_holy.png' };
 const IMG = {};
 if (ENABLE_ASSETS) for (const k in ASSETS) { const i = new Image(); i.onload = () => IMG[k] = i; i.src = ASSETS[k]; }
+/** Рисует картинку по ключу по центру (x,y); false → нужна заглушка/рисунок кодом */
 function sprite(k, x, y, w, h) { const i = IMG[k]; if (!i) return false; ctx.drawImage(i, x - w/2, y - h/2, w, h); return true; }
-function spriteFit(k, x, bottom, maxW, maxH) {
-  const i = IMG[k]; if (!i) return false;
-  const s = Math.min(maxW/i.naturalWidth, maxH/i.naturalHeight), w = i.naturalWidth*s, h = i.naturalHeight*s;
-  ctx.drawImage(i, x - w/2, bottom - h, w, h); return true;
-}
+
+/* ====================== ДАННЫЕ ====================== */
 const W = 360, H = 640, WIN_WAVE = 15;
+// Дорога от замка врага (вверху) к замку игроков (внизу)
 const P = [[180,58],[180,130],[70,160],[70,250],[290,290],[290,380],[80,420],[80,490],[180,525],[180,566]];
+// Площадки для башен рядом с дорогой
 const SLOTS = [[120,95],[240,95],[125,212],[30,200],[185,205],[235,238],[160,335],[232,340],[30,385],[150,455],[240,470],[232,545],[40,545]].map(([x,y]) => ({x,y,t:null}));
 const SEG = []; let TOT = 0;
 for (let i = 1; i < P.length; i++) { const a = P[i-1], b = P[i], l = Math.hypot(b[0]-a[0], b[1]-a[1]); SEG.push({a,b,l,s:TOT}); TOT += l; }
 function at(d) { const s = SEG.find(s => d < s.s + s.l) || SEG[SEG.length-1], t = Math.min(1,(d-s.s)/s.l); return [s.a[0]+(s.b[0]-s.a[0])*t, s.a[1]+(s.b[1]-s.a[1])*t]; }
+
+// Башни: c — цена, dmg, cd — перезарядка (с), rng — дальность
 const TOWERS = {
-  archer:{n:'Лучники', c:50,  col:'#d9b36c', dmg:9,  cd:.45, rng:82, ico:'🏹'},
-  holy:  {n:'Свет',    c:80,  col:'#fff3b0', dmg:7,  cd:.25, rng:76, ico:'✨'},
-  ice:   {n:'Лёд',     c:90,  col:'#7fd4ff', dmg:8,  cd:.9,  rng:72, ico:'❄️'},
-  fire:  {n:'Огонь',   c:100, col:'#ff7a33', dmg:20, cd:1.2, rng:72, ico:'🔥'},
-  arcane:{n:'Аркана',  c:120, col:'#c07bff', dmg:22, cd:1.1, rng:80, ico:'⚡'}
+  archer:{n:'Лучники', c:50,  col:'#d9b36c', dmg:9,  cd:.45, rng:82, ico:'🏹', d:'Быстрая стрельба, средняя дальность.'},
+  holy:  {n:'Свет',    c:80,  col:'#fff3b0', dmg:7,  cd:.25, rng:76, ico:'✨', d:'Луч и замедление. Вдвое сильнее против нежити.'},
+  ice:   {n:'Лёд',     c:90,  col:'#7fd4ff', dmg:8,  cd:.9,  rng:72, ico:'❄️', d:'Заморозка цели и аура замедления.'},
+  fire:  {n:'Огонь',   c:100, col:'#ff7a33', dmg:20, cd:1.2, rng:72, ico:'🔥', d:'Урон по площади и поджог.'},
+  arcane:{n:'Аркана',  c:120, col:'#c07bff', dmg:22, cd:1.1, rng:80, ico:'⚡', d:'Цепная молния по нескольким целям.'}
 };
-const LV = [1, 1.7, 2.6];
+const LV = [1, 1.7, 2.6];                 // множитель урона по уровням
 const upCost = (k, l) => Math.round(TOWERS[k].c * (l === 0 ? .9 : 1.4));
+// Монстры: t — g наземный / f летающий / u нежить
 const MON = {
   knight:  {hp:60,  sp:34, rw:8,  t:'g', col:'#4a3a6b', r:9},
   wolf:    {hp:35,  sp:78, rw:6,  t:'g', col:'#666',    r:7},
@@ -95,34 +153,46 @@ const MON = {
   boss:    {hp:1400,sp:18, rw:150,t:'g', col:'#2a0a3a', r:18, arm:.2, dmg:25}
 };
 const UNLOCK = [[1,'knight'],[2,'wolf'],[3,'gargoyle'],[4,'golem'],[5,'mage'],[6,'demon'],[7,'reaper'],[8,'drake']];
+// Герои — способности с перезарядкой
 const HEROES = {
-  knight:  {n:'Рыцарь',   c:120, cd:25, ico:'🛡️'},
-  mage:    {n:'Архимаг',  c:100, cd:25, ico:'🔮'},
-  huntress:{n:'Охотница', c:130, cd:25, ico:'🗡️'}
+  knight:  {n:'Рыцарь',   c:120, cd:25, ico:'🛡️'},   // оглушает наземных
+  mage:    {n:'Архимаг',  c:100, cd:25, ico:'🔮'},   // бафф башен + лечение замка
+  huntress:{n:'Охотница', c:130, cd:25, ico:'🗡️'}    // крит-удары по самым живучим
 };
+// Кооператив: волны сложнее (больше монстров, выше здоровье), но больше золота и здоровья замка
+const COOP = {cnt:1.7, hp:1.4, rw:1.25, bonus:1.5, start:260, castle:120, gap:.8};
+
+/* ====================== СОСТОЯНИЕ ====================== */
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const $ = id => document.getElementById(id);
-let g, selBuild = null, selTower = null, last = 0, hudT = 0;
-function newGame() {
-  g = {hp:100, gold:150, wave:0, speed:1, mons:[], fx:[], q:[], qT:0, active:false, towers:[], buff:0, hpS:1, over:false, hcd:{knight:0,mage:0,huntress:0}};
-  SLOTS.forEach(s => s.t = null); selBuild = selTower = null; renderPanel(); hud();
+const setT = (el, t) => { t = String(t); if (el.textContent !== t) el.textContent = t; };   // не трогаем DOM без нужды
+let g, selBuild = null, selSlot = -1, previewUntil = 0, last = 0, hudT = 0, snapT = 0;
+const net = {role:'solo', peer:null, conn:null, out:[], lost:false};   // role: solo | host | guest
+
+function newGame(coop) {
+  const mh = coop ? COOP.castle : 100;
+  g = {coop:!!coop, hp:mh, mh, gold:coop ? COOP.start : 150, wave:0, speed:1, mons:[], fx:[], q:[], qT:0, active:false, towers:[],
+       buff:0, hpS:1, over:false, won:false, endShown:false, mid:0, hcd:{knight:0, mage:0, huntress:0}};
+  SLOTS.forEach(s => s.t = null); selBuild = null; selSlot = -1; renderPanel(); hud();
 }
 const dist = (a, b) => Math.hypot(a.x-b.x, a.y-b.y);
+
+/* ====================== ВОЛНЫ И МОНСТРЫ (считает хост или одиночка) ====================== */
 function genWave(n) {
-  const pool = UNLOCK.filter(u => u[0] <= n).map(u => u[1]), q = [];
-  for (let i = 0; i < 6 + n*2; i++) q.push({type:pool[Math.random()*pool.length|0], t:Math.max(.35, 1 - n*.04)});
-  if (n % 5 === 0) q.push({type:'boss', t:2});
+  const pool = UNLOCK.filter(u => u[0] <= n).map(u => u[1]), q = [], k = g.coop ? COOP.cnt : 1, gap = g.coop ? COOP.gap : 1;
+  for (let i = 0; i < Math.round((6 + n*2)*k); i++) q.push({type:pool[Math.random()*pool.length|0], t:Math.max(.3, (1 - n*.04)*gap)});
+  if (n % 5 === 0) q.push({type:'boss', t:2});     // босс каждые 5 волн
   return q;
 }
 function startWave() {
   if (g.active || g.over) return;
-  g.wave++; g.hpS = 1 + .16*(g.wave-1); g.q = genWave(g.wave); g.qT = 0; g.active = true; hud();
+  g.wave++; g.hpS = (1 + .16*(g.wave-1))*(g.coop ? COOP.hp : 1); g.q = genWave(g.wave); g.qT = 0; g.active = true;
 }
 function spawn(type, d = 0) {
-  const b = MON[type], m = {...b, type, hp:b.hp*g.hpS, d, slow:1, slowT:0, stun:0, burn:0, burnT:0, sp0:4, x:0, y:0};
-  m.max = m.hp; m.rw = Math.round(b.rw*(1 + .05*g.wave)); place(m); g.mons.push(m);
+  const b = MON[type], m = {...b, type, id:++g.mid, hp:b.hp*g.hpS, d, slow:1, slowT:0, stun:0, burn:0, burnT:0, sp0:4, x:0, y:0};
+  m.max = m.hp; m.rw = Math.round(b.rw*(1 + .05*g.wave)*(g.coop ? COOP.rw : 1)); place(m); g.mons.push(m);
 }
-function place(m) {
+function place(m) {  // позиция: летающие — по прямой, остальные — по дороге
   if (m.t === 'f') { const t = Math.min(1, m.d/TOT); m.x = P[0][0] + (P[P.length-1][0]-P[0][0])*t; m.y = P[0][1] + (P[P.length-1][1]-P[0][1])*t; }
   else { const p = at(m.d); m.x = p[0]; m.y = p[1]; }
 }
@@ -130,17 +200,62 @@ function dmg(m, d, src) {
   if (m.dead) return;
   let x = d*(1 - (m.arm||0));
   if (src === 'fire') x *= 1 - (m.fr||0);
-  if (src === 'holy' && m.t === 'u') x *= 2;
+  if (src === 'holy' && m.t === 'u') x *= 2;    // святой свет силён против нежити
   m.hp -= x;
   if (m.hp <= 0) {
     m.dead = true; g.gold += m.rw;
-    if (m.boom) {
+    if (m.boom) {                                // демон взрывается: на время отключает башни рядом
       fx({k:'ring', x:m.x, y:m.y, r:55, c:'#ff5a2a', t:.4});
       g.towers.forEach(t => { if (dist(t, m) < 60) t.off = 2.5; });
     }
   }
 }
-function fx(o) { o.T = o.t; if (g.fx.length < 60) g.fx.push(o); }
+// Эффект; на хосте копия уходит гостю вместе со снимком состояния
+function fx(o) {
+  o.T = o.t; if (g.fx.length < 60) g.fx.push(o);
+  if (net.role === 'host' && net.out.length < 40) net.out.push({k:o.k, x:o.x, y:o.y, r:o.r, x1:o.x1, y1:o.y1, x2:o.x2, y2:o.y2, c:o.c, t:o.t});
+}
+
+/* ====================== ДЕЙСТВИЯ ИГРОКОВ ====================== */
+function build(i, k) {
+  const s = SLOTS[i];
+  if (!s || s.t || !TOWERS[k] || g.over || g.gold < TOWERS[k].c) return;
+  g.gold -= TOWERS[k].c;
+  s.t = {k, l:0, cd:0, off:0, x:s.x, y:s.y, slot:s, i, ang:-Math.PI/2}; g.towers.push(s.t);
+  fx({k:'ring', x:s.x, y:s.y, r:26, c:TOWERS[k].col, t:.35});
+}
+function upgrade(i) {
+  const t = SLOTS[i] && SLOTS[i].t;
+  if (!t || t.l >= 2 || g.over || g.gold < upCost(t.k, t.l)) return;
+  g.gold -= upCost(t.k, t.l); t.l++;
+  fx({k:'ring', x:t.x, y:t.y, r:34, c:'#e8c15a', t:.5});
+}
+function sell(i) {
+  const t = SLOTS[i] && SLOTS[i].t; if (!t || g.over) return;
+  let paid = TOWERS[t.k].c; for (let j = 0; j < t.l; j++) paid += upCost(t.k, j);
+  g.gold += Math.round(paid*.6); SLOTS[i].t = null; g.towers = g.towers.filter(x => x !== t);
+}
+function summon(k) {
+  const h = HEROES[k];
+  if (!h || g.over || g.gold < h.c || g.hcd[k] > 0) return;
+  g.gold -= h.c; g.hcd[k] = h.cd;
+  const ms = g.mons.filter(m => !m.dead);
+  if (k === 'knight') ms.forEach(m => { if (m.t !== 'f') { m.stun = 2.5; dmg(m, 40, 'hero'); } });
+  if (k === 'mage') { g.buff = 10; g.hp = Math.min(g.mh, g.hp + 15); }
+  if (k === 'huntress') ms.sort((a, b) => b.hp - a.hp).slice(0, 6).forEach(m => {
+    const crit = Math.random() < .5 ? 3 : 1.6; dmg(m, 70*crit, 'hero'); fx({k:'ring', x:m.x, y:m.y, r:16, c:'#e060ff', t:.3});
+  });
+  fx({k:'ring', x:180, y:320, r:180, c:'#e8c15a', t:.5});
+}
+// Выполнение команды: на хосте/в одиночке — сразу, у гостя — отправка хосту
+function exec(c) {
+  if (!c) return;
+  if (c.c === 'build') build(c.i, c.k); else if (c.c === 'up') upgrade(c.i); else if (c.c === 'sell') sell(c.i);
+  else if (c.c === 'hero') summon(c.k); else if (c.c === 'wave') startWave();
+}
+function act(c) { if (net.role === 'guest') send({t:'cmd', c}); else { exec(c); hud(); } }
+
+/* ====================== ОБНОВЛЕНИЕ (хост / одиночка) ====================== */
 function update(dt) {
   if (g.over) return;
   g.buff = Math.max(0, g.buff - dt);
@@ -152,12 +267,9 @@ function update(dt) {
     if (m.regen) m.hp = Math.min(m.max, m.hp + m.regen*dt);
     if (m.slowT > 0) m.slowT -= dt; else m.slow = 1;
     if (m.stun > 0) m.stun -= dt;
-    else {
-      m.d += m.sp*m.slow*(m.t === 'f' ? 2.1 : 1)*dt;
-      place(m);
-    }
+    else { m.d += m.sp*m.slow*(m.t === 'f' ? 2.1 : 1)*dt; place(m); }   // летающие: путь короче → быстрее
     if (m.summon && (m.sp0 -= dt) <= 0) { m.sp0 = 4; spawn('skeleton', Math.max(0, m.d - 12)); }
-    if (m.d >= TOT) { m.dead = m.gone = true; g.hp -= m.dmg || 3; fx({k:'ring', x:180, y:575, r:30, c:'#ff3030', t:.3}); }
+    if (m.d >= TOT) { m.dead = true; g.hp -= m.dmg || 3; fx({k:'ring', x:180, y:575, r:30, c:'#ff3030', t:.3}); }
   }
   const alive = g.mons.filter(m => !m.dead);
   for (const t of g.towers) {
@@ -166,8 +278,9 @@ function update(dt) {
     if (t.k === 'ice') for (const m of alive) if (dist(t, m) < rng) { const v = .65 - .08*t.l; if (m.slowT <= 0 || m.slow > v) m.slow = v; m.slowT = .3; }
     t.cd -= dt; if (t.cd > 0) continue;
     let tg = null;
-    for (const m of alive) if (!m.dead && dist(t, m) < rng && (!tg || m.d > tg.d)) tg = m;
+    for (const m of alive) if (!m.dead && dist(t, m) < rng && (!tg || m.d > tg.d)) tg = m;   // цель — ближайший к замку
     if (!tg) continue;
+    t.ang = Math.atan2(tg.y - t.y, tg.x - t.x);
     t.cd = b.cd/(1 + .1*t.l)/(g.buff > 0 ? 1.5 : 1);
     const d = b.dmg*mul;
     fx({k:'line', x1:t.x, y1:t.y, x2:tg.x, y2:tg.y, c:b.col, t:.12});
@@ -177,7 +290,7 @@ function update(dt) {
     else if (t.k === 'fire') {
       fx({k:'ring', x:tg.x, y:tg.y, r:38, c:b.col, t:.25});
       for (const m of alive) if (dist(m, tg) < 38) { dmg(m, d, 'fire'); m.burn = 5*mul; m.burnT = 3; }
-    } else {
+    } else {   // арканная: цепная молния
       let cur = tg, left = 3 + t.l, hit = new Set(), dd = d;
       while (cur && left-- > 0) {
         hit.add(cur); dmg(cur, dd, 'arc'); dd *= .75;
@@ -191,75 +304,188 @@ function update(dt) {
   for (const f of g.fx) f.t -= dt; g.fx = g.fx.filter(f => f.t > 0);
   if (g.hp <= 0) { g.hp = 0; end(false); }
   else if (g.active && !g.q.length && !g.mons.length) {
-    g.active = false; g.gold += 20 + g.wave*3;
+    g.active = false; g.gold += Math.round((20 + g.wave*3)*(g.coop ? COOP.bonus : 1));
     if (g.wave >= WIN_WAVE) end(true);
   }
 }
 function end(win) {
-  g.over = true; const o = $('ov'); o.classList.remove('hide');
-  o.innerHTML = `<h1>${win ? 'Победа!' : 'Поражение'}</h1><p>${win ? 'Замок устоял — тьма отступила.' : 'Проклятые орды захватили замок. Дошли до волны ' + g.wave + '.'}</p><button id="again">Играть снова</button>`;
-  $('again').onclick = () => { o.classList.add('hide'); newGame(); };
+  g.over = true; g.won = win; g.endShown = true;
+  endScreen(win);
 }
-function summon(k) {
-  const h = HEROES[k];
-  if (g.over || g.gold < h.c || g.hcd[k] > 0) return;
-  g.gold -= h.c; g.hcd[k] = h.cd;
-  const ms = g.mons.filter(m => !m.dead);
-  if (k === 'knight') ms.forEach(m => { if (m.t !== 'f') { m.stun = 2.5; dmg(m, 40, 'hero'); } });
-  if (k === 'mage') { g.buff = 10; g.hp = Math.min(100, g.hp + 15); }
-  if (k === 'huntress') ms.sort((a, b) => b.hp - a.hp).slice(0, 6).forEach(m => {
-    const crit = Math.random() < .5 ? 3 : 1.6; dmg(m, 70*crit, 'hero'); fx({k:'ring', x:m.x, y:m.y, r:16, c:'#e060ff', t:.3});
+function endScreen(win) {
+  const host = net.role !== 'guest';
+  showEnd(win ? 'Победа!' : 'Поражение',
+    win ? 'Замок устоял — тьма отступила.' : 'Проклятые орды захватили замок. Дошли до волны ' + g.wave + '.',
+    host ? 'Играть снова' : null, host ? () => { hideOv(); newGame(g.coop); } : null,
+    host ? '' : 'Ждём, когда хост начнёт новую игру…');
+}
+
+/* ====================== СЕТЬ (PeerJS): хост считает игру, гость шлёт команды ====================== */
+function send(o) { try { if (net.conn && net.conn.open) net.conn.send(o); } catch (e) {} }
+function snapshot() {   // компактный снимок состояния для гостя (~12 раз/с)
+  const s = {t:'s', hp:g.hp, mh:g.mh, gold:g.gold, w:g.wave, a:g.active ? 1 : 0, b:+g.buff.toFixed(1), sp:g.speed,
+    h:[g.hcd.knight, g.hcd.mage, g.hcd.huntress].map(v => +v.toFixed(1)), o:g.over ? (g.won ? 2 : 1) : 0,
+    T:g.towers.map(t => [t.i, t.k, t.l, t.off > 0 ? 1 : 0, Math.round((t.ang||0)*10)]),
+    M:g.mons.map(m => [m.id, m.type, Math.round(m.x), Math.round(m.y), Math.round(m.hp), Math.round(m.max), m.stun > 0 ? 1 : 0, m.slow < 1 ? 1 : 0, m.burnT > 0 ? 1 : 0]),
+    F:net.out};
+  net.out = []; return s;
+}
+function applyState(s) {   // гость применяет снимок
+  g.hp = s.hp; g.mh = s.mh; g.gold = s.gold; g.wave = s.w; g.active = !!s.a; g.buff = s.b; g.speed = s.sp;
+  g.hcd.knight = s.h[0]; g.hcd.mage = s.h[1]; g.hcd.huntress = s.h[2];
+  SLOTS.forEach(sl => sl.t = null); g.towers = [];
+  for (const [i, k, l, off, a] of s.T) { const sl = SLOTS[i]; sl.t = {k, l, off:off ? 1 : 0, x:sl.x, y:sl.y, slot:sl, i, ang:a/10}; g.towers.push(sl.t); }
+  const old = new Map(g.mons.map(m => [m.id, m]));
+  g.mons = s.M.map(([id, type, x, y, hp, max, stun, slow, burn]) => {
+    let m = old.get(id);
+    if (!m) m = {...MON[type], type, id, x, y};
+    m.tx = x; m.ty = y; m.hp = hp; m.max = max; m.stun = stun; m.slow = slow ? .6 : 1; m.burnT = burn;
+    return m;
   });
-  fx({k:'ring', x:180, y:320, r:180, c:'#e8c15a', t:.5});
+  for (const f of s.F) fx(f);
+  if (s.o && !g.endShown) { g.over = true; g.won = s.o === 2; g.endShown = true; endScreen(g.won); }
+  if (!s.o && g.endShown) { g.over = false; g.endShown = false; hideOv(); }
   hud();
 }
+function onData(m) {
+  if (!m) return;
+  if (net.role === 'host' && m.t === 'cmd') { exec(m.c); hud(); }
+  else if (net.role === 'guest') {
+    if (m.t === 'start') { hideOv(); newGame(true); }
+    else if (m.t === 's' && g) applyState(m);
+  }
+}
+function genCode() { const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let c = ''; for (let i = 0; i < 5; i++) c += a[Math.random()*a.length|0]; return c; }
+function msg(t, bad = true) { const s = $('st'); s.style.display = 'block'; s.style.color = bad ? '#ff7b7b' : 'var(--gold)'; s.textContent = t; }
+function needPeer() { if (typeof Peer === 'undefined') { msg('Не загрузился PeerJS. Проверьте интернет и обновите страницу.'); return false; } return true; }
+function lost() {
+  if (net.role === 'solo' || net.lost) return;
+  net.lost = true; g.over = true;
+  showEnd('Связь потеряна', 'Второй игрок отключился.', 'В меню', () => location.reload(), '');
+}
+// Хост: создаёт комнату с кодом
+function makeRoom() {
+  if (!needPeer()) return;
+  msg('Создаём комнату…', false);
+  const attempt = n => {
+    const code = genCode(), p = new Peer('trroyal-' + code);
+    p.on('open', () => { net.peer = p; net.role = 'host'; setT($('roomCode'), code); show('m-wait'); });
+    p.on('error', e => {
+      if (e.type === 'unavailable-id' && n < 5) { p.destroy(); attempt(n + 1); }
+      else { msg('Ошибка сети: ' + e.type); }
+    });
+    p.on('connection', c => {
+      if (net.conn) { c.close(); return; }          // только 2 игрока
+      const go = () => { net.conn = c; c.on('data', onData); c.on('close', lost); c.on('error', lost); hideOv(); newGame(true); send({t:'start'}); };
+      c.open ? go() : c.on('open', go);
+    });
+  };
+  attempt(0);
+}
+// Гость: подключается по коду
+function joinRoom() {
+  const code = $('code').value.trim().toUpperCase();
+  if (code.length < 4) { msg('Введите код комнаты'); return; }
+  if (!needPeer()) return;
+  msg('Подключаемся…', false);
+  const p = new Peer(); net.peer = p;
+  p.on('open', () => {
+    const c = p.connect('trroyal-' + code, {reliable:true, serialization:'json'});
+    const to = setTimeout(() => { msg('Нет ответа от комнаты. Проверьте код.'); p.destroy(); }, 12000);
+    c.on('open', () => { clearTimeout(to); net.conn = c; net.role = 'guest'; c.on('data', onData); c.on('close', lost); c.on('error', lost); msg('Подключено! Ждём старта…', false); });
+  });
+  p.on('error', e => msg(e.type === 'peer-unavailable' ? 'Комната с таким кодом не найдена.' : 'Ошибка сети: ' + e.type));
+}
+
+/* ====================== ВВОД ====================== */
 cv.addEventListener('pointerdown', e => {
   if (g.over) return;
   const r = cv.getBoundingClientRect(), x = (e.clientX - r.left)/r.width*W, y = (e.clientY - r.top)/r.height*H;
-  const s = SLOTS.find(s => Math.hypot(s.x-x, s.y-y) < 30 || (s.t && Math.abs(s.x-x) < 32 && y > s.y-62 && y < s.y+16));
-  if (!s) { selTower = null; hud(); return; }
-  if (s.t) { selTower = s.t; selBuild = null; renderPanel(); hud(); return; }
-  if (selBuild && g.gold >= TOWERS[selBuild].c) {
-    g.gold -= TOWERS[selBuild].c;
-    s.t = {k:selBuild, l:0, cd:0, off:0, x:s.x, y:s.y, slot:s}; g.towers.push(s.t); hud();
-  }
+  const i = SLOTS.findIndex(s => Math.hypot(s.x-x, s.y-y) < 28);
+  if (i < 0) { selSlot = -1; hud(); return; }
+  if (SLOTS[i].t) { selSlot = i; selBuild = null; renderPanel(); hud(); return; }
+  if (selBuild) act({c:'build', i, k:selBuild}); else { selSlot = -1; hud(); }
 });
-$('go').onclick = startWave;
-$('spd').onclick = () => { g.speed = g.speed === 1 ? 2 : 1; hud(); };
-$('up').onclick = () => { const t = selTower; if (t && t.l < 2 && g.gold >= upCost(t.k, t.l)) { g.gold -= upCost(t.k, t.l); t.l++; hud(); } };
-$('sell').onclick = () => {
-  const t = selTower; if (!t) return;
-  let paid = TOWERS[t.k].c; for (let i = 0; i < t.l; i++) paid += upCost(t.k, i);
-  g.gold += Math.round(paid*.6); t.slot.t = null; g.towers = g.towers.filter(x => x !== t); selTower = null; hud();
-};
-function startGame(e) {
-  if (e) e.preventDefault();
-  try { $('ov').classList.add('hide'); newGame(); resize(); }
-  catch (err) { $('ov').classList.remove('hide'); const s = $('st'); if (s) { s.style.display = 'block'; s.textContent = 'Ошибка запуска: ' + err.message; } }
+// Кнопки: click + touchend с защитой от двойного срабатывания (iOS)
+function tap(el, fn) {
+  let t = 0;
+  const h = e => { const n = Date.now(); if (n - t < 400) return; t = n; if (e.cancelable) e.preventDefault(); fn(e); };
+  el.addEventListener('click', h); el.addEventListener('touchend', h, {passive:false});
 }
-$('play').addEventListener('click', startGame);
-$('play').addEventListener('touchend', startGame, {passive:false});
+tap($('go'), () => act({c:'wave'}));
+tap($('spd'), () => { if (net.role !== 'guest') { g.speed = g.speed === 1 ? 2 : 1; hud(); } });
+tap($('up'), () => { if (selSlot >= 0) act({c:'up', i:selSlot}); });
+tap($('sell'), () => { if (selSlot >= 0) { act({c:'sell', i:selSlot}); selSlot = -1; hud(); } });
+tap($('cx'), () => { selSlot = -1; selBuild = null; previewUntil = 0; renderPanel(); hud(); });
+tap($('play'), () => { try { net.role = 'solo'; hideOv(); newGame(false); resize(); } catch (err) { show('m-main'); msg('Ошибка запуска: ' + err.message); } });
+tap($('mkRoom'), makeRoom);
+tap($('join'), joinRoom);
+tap($('cancel'), () => { try { net.peer && net.peer.destroy(); } catch (e) {} net.peer = null; net.role = 'solo'; show('m-main'); msg('Комната закрыта.', false); });
+let endAction = null; tap($('again'), () => endAction && endAction());
+
+/* ====================== ИНТЕРФЕЙС ====================== */
+function show(id) { ['m-main','m-wait','m-end'].forEach(x => $(x).classList.toggle('hide', x !== id)); $('ov').classList.remove('hide'); }
+function hideOv() { $('ov').classList.add('hide'); }
+function showEnd(title, text, btn, fn, note) {
+  setT($('endT'), title); setT($('endP'), text || note || '');
+  if (note) setT($('endP'), (text ? text + ' ' : '') + note);
+  const b = $('again'); b.style.display = btn ? '' : 'none'; b.textContent = btn || ''; endAction = fn; show('m-end');
+}
 function renderPanel() {
   $('tRow').innerHTML = Object.keys(TOWERS).map(k => `<button data-t="${k}" class="${selBuild === k ? 'on' : ''}">${TOWERS[k].ico}<br>${TOWERS[k].n}<small>${TOWERS[k].c}</small></button>`).join('');
   $('hRow').innerHTML = Object.keys(HEROES).map(k => `<button data-h="${k}">${HEROES[k].ico} ${HEROES[k].n}<small></small></button>`).join('');
-  $('tRow').querySelectorAll('button').forEach(b => b.onclick = () => { selBuild = selBuild === b.dataset.t ? null : b.dataset.t; selTower = null; renderPanel(); hud(); });
-  $('hRow').querySelectorAll('button').forEach(b => b.onclick = () => summon(b.dataset.h));
+  $('tRow').querySelectorAll('button').forEach(b => tap(b, () => {
+    selBuild = selBuild === b.dataset.t ? null : b.dataset.t; selSlot = -1;
+    previewUntil = selBuild ? performance.now() + 2500 : 0;   // карточка-превью башни на 2.5 с
+    renderPanel(); hud();
+  }));
+  $('hRow').querySelectorAll('button').forEach(b => tap(b, () => act({c:'hero', k:b.dataset.h})));
+}
+// Карточка башни: полная картинка + статы + кнопки (DOM строится один раз, дальше только обновляется)
+let cardSlot = -1, cardLv = -1;
+function updateCard() {
+  const c = $('card'), t = selSlot >= 0 ? SLOTS[selSlot].t : null;
+  const k = t ? t.k : (selBuild && performance.now() < previewUntil ? selBuild : null);
+  if (!k) { c.classList.add('hide'); cardSlot = -1; return; }
+  c.classList.remove('hide');
+  c.classList.toggle('top', !!t && t.y > H/2); c.classList.toggle('bot', !(t && t.y > H/2));
+  const b = TOWERS[k], l = t ? t.l : 0, img = $('cpic'), ico = $('cico');
+  if (img.dataset.k !== k) {   // меняем картинку только при смене типа башни
+    img.dataset.k = k; setT(ico, b.ico);
+    if (TOWER_PIC[k]) {
+      img.style.display = 'none'; ico.style.display = '';
+      img.onload = () => { img.style.display = ''; ico.style.display = 'none'; };
+      img.onerror = () => { img.style.display = 'none'; ico.style.display = ''; };
+      img.src = TOWER_PIC[k];
+    } else { img.removeAttribute('src'); img.style.display = 'none'; ico.style.display = ''; }
+  }
+  img.style.filter = `drop-shadow(0 0 ${4 + l*5}px rgba(232,193,90,.85))`;   // чем выше уровень — тем ярче свечение
+  setT($('ctitle'), b.n + (t ? ` · ур. ${l+1}/3` : ` · ${b.c} зол.`));
+  setT($('cstat'), `Урон ${Math.round(b.dmg*LV[l])}` + (t && l < 2 ? ` → ${Math.round(b.dmg*LV[l+1])}` : '') + ` · Даль ${Math.round(b.rng*(1 + .08*l))}`);
+  setT($('cdesc'), t ? b.d : b.d + ' Выберите площадку на карте.');
+  $('cbtn').style.display = t ? 'flex' : 'none';
+  if (t) {
+    setT($('up'), l < 2 ? 'Улучшить ' + upCost(k, l) : 'Макс. уровень');
+    $('up').disabled = l >= 2 || g.gold < upCost(k, l);
+    let paid = b.c; for (let j = 0; j < l; j++) paid += upCost(k, j);
+    setT($('sell'), 'Продать +' + Math.round(paid*.6));
+    if (cardSlot === selSlot && l > cardLv) { c.classList.remove('pulse'); void c.offsetWidth; c.classList.add('pulse'); }   // анимация улучшения
+    cardSlot = selSlot; cardLv = l;
+  } else cardSlot = -1;
 }
 function hud() {
-  $('hp').textContent = g.hp; $('gold').textContent = Math.floor(g.gold); $('wv').textContent = g.wave + '/' + WIN_WAVE;
-  $('spd').textContent = g.speed + 'x'; $('go').disabled = g.active || g.over; $('go').textContent = g.active ? '…' : 'Волна ' + (g.wave+1);
+  setT($('hp'), g.hp); setT($('gold'), Math.floor(g.gold)); setT($('wv'), g.wave + '/' + WIN_WAVE + (g.coop ? ' 👥' : ''));
+  setT($('spd'), g.speed + 'x'); $('spd').disabled = net.role === 'guest';
+  $('go').disabled = g.active || g.over; setT($('go'), g.active ? '…' : 'Волна ' + (g.wave + 1));
   $('tRow').querySelectorAll('button').forEach(b => b.disabled = g.gold < TOWERS[b.dataset.t].c);
-  $('hRow').querySelectorAll('button').forEach(b => { const k = b.dataset.h; b.disabled = g.gold < HEROES[k].c || g.hcd[k] > 0; b.querySelector('small').textContent = g.hcd[k] > 0 ? Math.ceil(g.hcd[k]) + ' c' : HEROES[k].c; });
-  const t = selTower;
-  $('sel').style.display = t ? 'flex' : 'none';
-  if (t) {
-    $('selTxt').textContent = `${TOWERS[t.k].n} · ур. ${t.l+1}`;
-    $('up').textContent = t.l < 2 ? 'Улучшить ' + upCost(t.k, t.l) : 'Макс.'; $('up').disabled = t.l >= 2 || g.gold < upCost(t.k, t.l);
-    let paid = TOWERS[t.k].c; for (let i = 0; i < t.l; i++) paid += upCost(t.k, i);
-    $('sell').textContent = 'Продать +' + Math.round(paid*.6);
-  }
-  resize();
+  $('hRow').querySelectorAll('button').forEach(b => {
+    const k = b.dataset.h; b.disabled = g.gold < HEROES[k].c || g.hcd[k] > 0;
+    setT(b.querySelector('small'), g.hcd[k] > 0 ? Math.ceil(g.hcd[k]) + ' c' : HEROES[k].c);
+  });
+  updateCard(); resize();
 }
+
+/* ====================== ОТРИСОВКА ====================== */
 function drawBG() {
   if (sprite('bg', W/2, H/2, W, H)) return;
   const gr = ctx.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#1b1426'); gr.addColorStop(1, '#17261c');
@@ -270,40 +496,59 @@ function drawBG() {
   }
 }
 function drawCastles() {
-  if (!sprite('castleEnemy', 180, 30, 120, 70)) {
+  if (!sprite('castleEnemy', 180, 30, 120, 70)) {   // проклятый замок врага
     ctx.fillStyle = '#241530'; ctx.fillRect(110, 0, 140, 52);
-    for (let x = 114; x < 250; x += 28) { ctx.fillRect(x, -4, 16, 12); }
+    for (let x = 114; x < 250; x += 28) ctx.fillRect(x, -4, 16, 12);
     ctx.fillStyle = '#ff3b3b'; ctx.fillRect(150, 28, 8, 6); ctx.fillRect(202, 28, 8, 6);
     ctx.fillStyle = '#0a0610'; ctx.fillRect(168, 34, 24, 18);
   }
-  if (!sprite('castlePlayer', 180, 600, 150, 80)) {
+  if (!sprite('castlePlayer', 180, 600, 150, 80)) {  // королевский замок
     ctx.fillStyle = '#f2ecdc'; ctx.fillRect(100, 566, 160, 74);
     ctx.fillStyle = '#e8c15a'; ctx.fillRect(100, 562, 160, 6);
     for (let x = 104; x < 260; x += 26) ctx.fillRect(x, 556, 14, 8);
-    ctx.fillStyle = '#7b4fd0'; for (const x of [118, 236]) { ctx.fillRect(x, 580, 14, 36); }
+    ctx.fillStyle = '#7b4fd0'; for (const x of [118, 236]) ctx.fillRect(x, 580, 14, 36);
     ctx.fillStyle = '#3a2a5c'; ctx.fillRect(166, 600, 28, 40);
     ctx.fillStyle = '#e8c15a'; ctx.beginPath(); ctx.moveTo(168, 556); ctx.lineTo(172, 544); ctx.lineTo(180, 552); ctx.lineTo(188, 544); ctx.lineTo(192, 556); ctx.fill();
   }
 }
+// Башня сверху (top-down): каменное основание с зубцами, поворотный ствол к цели, эмблема типа
+function poly(n, r, rot) { ctx.beginPath(); for (let i = 0; i < n; i++) { const a = rot + i*2*Math.PI/n; ctx[i ? 'lineTo' : 'moveTo'](Math.cos(a)*r, Math.sin(a)*r); } ctx.closePath(); }
 function drawTower(t) {
   const b = TOWERS[t.k];
+  ctx.save(); ctx.translate(t.x, t.y);
   if (t.off > 0) ctx.globalAlpha = .45;
-  if (!spriteFit('t_' + t.k, t.x, t.y + 16, 72, 80)) {
-    ctx.font = '30px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(b.ico, t.x, t.y - 8);
-    ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
+  if (!sprite('top_' + t.k, 0, 0, 40, 40)) {
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.arc(2, 3, 17, 0, 7); ctx.fill();          // тень
+    ctx.fillStyle = '#4b4458'; ctx.beginPath(); ctx.arc(0, 0, 16, 0, 7); ctx.fill();                  // камень
+    ctx.fillStyle = '#8a8196';
+    for (let i = 0; i < 8; i++) { ctx.save(); ctx.rotate(i*Math.PI/4); ctx.fillRect(11, -3, 6, 6); ctx.restore(); }   // зубцы
+    ctx.lineWidth = 1 + t.l; ctx.strokeStyle = t.l ? '#e8c15a' : '#2a2433'; ctx.beginPath(); ctx.arc(0, 0, 16.5, 0, 7); ctx.stroke();   // рамка: золотая с ур.2+
+    ctx.fillStyle = '#2a2433'; ctx.beginPath(); ctx.arc(0, 0, 10, 0, 7); ctx.fill();                  // площадка
+    ctx.save(); ctx.rotate(t.ang || 0);                                                                // ствол/излучатель к цели
+    ctx.fillStyle = b.col; ctx.fillRect(0, -2.5, 15, 5); ctx.fillStyle = '#e8c15a'; ctx.fillRect(13, -3, 3, 6); ctx.restore();
+    ctx.fillStyle = b.col;                                                                             // эмблема типа
+    if (t.k === 'archer') { poly(4, 7, Math.PI/4); ctx.fill(); }
+    else if (t.k === 'holy') { ctx.beginPath(); for (let i = 0; i < 8; i++) { const a = i*Math.PI/4, r = i % 2 ? 3 : 8; ctx[i ? 'lineTo' : 'moveTo'](Math.cos(a)*r, Math.sin(a)*r); } ctx.closePath(); ctx.fill(); }
+    else if (t.k === 'ice') { poly(6, 7, 0); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; poly(6, 3.5, 0); ctx.stroke(); }
+    else if (t.k === 'fire') { ctx.beginPath(); ctx.arc(0, 0, 6, 0, 7); ctx.fill(); ctx.fillStyle = '#ffd23a'; poly(3, 3.5, -Math.PI/2); ctx.fill(); }
+    else { ctx.beginPath(); ctx.arc(0, 0, 6, 0, 7); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(0, 0, 3, 0, 7); ctx.stroke(); }
   }
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = '#e8c15a'; for (let i = 0; i <= t.l; i++) ctx.fillRect(t.x - 8 + i*6, t.y + 19, 4, 3);
-  if (t === selTower) { ctx.strokeStyle = '#e8c15a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(t.x, t.y, b.rng*(1 + .08*t.l), 0, 7); ctx.stroke(); }
+  ctx.restore();
+  ctx.fillStyle = '#e8c15a'; for (let i = 0; i <= t.l; i++) ctx.fillRect(t.x - 8 + i*6, t.y + 20, 4, 3);   // метки уровня
 }
 function draw(time) {
   ctx.clearRect(0, 0, W, H); drawBG(); drawCastles();
   const pulse = .5 + .5*Math.sin(time/250);
-  for (const s of SLOTS) if (!s.t) {
+  for (const s of SLOTS) if (!s.t) {   // площадки: подсвечиваем свободные при выборе башни
     ctx.strokeStyle = selBuild ? `rgba(232,193,90,${.5 + .5*pulse})` : 'rgba(255,255,255,.18)';
-    ctx.lineWidth = selBuild ? 2 : 1; ctx.beginPath(); ctx.arc(s.x, s.y, 14, 0, 7); ctx.stroke();
+    ctx.lineWidth = selBuild ? 2 : 1; ctx.beginPath(); ctx.arc(s.x, s.y, 16, 0, 7); ctx.stroke();
   }
-  g.towers.slice().sort((a, b) => a.y - b.y).forEach(drawTower);
+  g.towers.forEach(drawTower);
+  const st = selSlot >= 0 ? SLOTS[selSlot].t : null;
+  if (st) {   // выбранная башня: радиус и золотое кольцо
+    ctx.strokeStyle = 'rgba(232,193,90,.7)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(st.x, st.y, TOWERS[st.k].rng*(1 + .08*st.l), 0, 7); ctx.stroke();
+    ctx.strokeStyle = `rgba(232,193,90,${.6 + .4*pulse})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(st.x, st.y, 20, 0, 7); ctx.stroke();
+  }
   for (const m of g.mons) {
     if (m.t === 'f') { ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.arc(m.x, m.y + 10, m.r*.8, 0, 7); ctx.fill(); }
     const y = m.t === 'f' ? m.y - 6 : m.y;
@@ -311,33 +556,40 @@ function draw(time) {
       ctx.fillStyle = m.stun > 0 ? '#9fe' : m.slow < 1 ? '#7ac' : m.col; ctx.beginPath(); ctx.arc(m.x, y, m.r, 0, 7); ctx.fill();
       if (m.burnT > 0) { ctx.strokeStyle = '#f73'; ctx.lineWidth = 2; ctx.stroke(); }
     }
-    if (m.hp < m.max) { ctx.fillStyle = '#300'; ctx.fillRect(m.x - 10, y - m.r - 6, 20, 3); ctx.fillStyle = '#e44'; ctx.fillRect(m.x - 10, y - m.r - 6, 20*m.hp/m.max, 3); }
+    if (m.hp < m.max) { ctx.fillStyle = '#300'; ctx.fillRect(m.x - 10, y - m.r - 6, 20, 3); ctx.fillStyle = '#e44'; ctx.fillRect(m.x - 10, y - m.r - 6, 20*Math.max(0, m.hp)/m.max, 3); }
   }
   for (const f of g.fx) {
-    ctx.globalAlpha = f.t/f.T; ctx.strokeStyle = f.c; ctx.lineWidth = 2; ctx.beginPath();
+    ctx.globalAlpha = Math.max(0, f.t/f.T); ctx.strokeStyle = f.c; ctx.lineWidth = 2; ctx.beginPath();
     if (f.k === 'line') { ctx.moveTo(f.x1, f.y1); ctx.lineTo(f.x2, f.y2); } else ctx.arc(f.x, f.y, f.r*(1 - f.t/f.T*.5), 0, 7);
     ctx.stroke(); ctx.globalAlpha = 1;
   }
   if (g.buff > 0) { ctx.fillStyle = '#e8c15a'; ctx.font = '12px Cinzel,serif'; ctx.fillText('Бафф башен ' + Math.ceil(g.buff), 8, 18); }
 }
+
+/* ====================== ЦИКЛ ====================== */
 function resize() {
   const st = $('stage'), sc = Math.min(st.clientWidth/W, st.clientHeight/H), dpr = Math.min(window.devicePixelRatio || 1, 2);
   const cw = Math.floor(W*sc), ch = Math.floor(H*sc);
-  if (cv.style.width !== cw + 'px' || cv.style.height !== ch + 'px') {
+  if (cw > 0 && ch > 0 && (cv.style.width !== cw + 'px' || cv.style.height !== ch + 'px')) {
     cv.style.width = cw + 'px'; cv.style.height = ch + 'px'; cv.width = cw*dpr; cv.height = ch*dpr;
     ctx.setTransform(cw*dpr/W, 0, 0, ch*dpr/H, 0, 0);
   }
 }
 function loop(time) {
-  requestAnimationFrame(loop);
+  requestAnimationFrame(loop);        // следующий кадр планируем сразу, чтобы одна ошибка не остановила игру
   const dt = Math.min(.05, (time - last)/1000 || 0); last = time;
-  for (let i = 0; i < g.speed; i++) update(dt);
+  if (net.role === 'guest') {         // гость не считает игру: сглаживает позиции монстров и гасит эффекты
+    const k = 1 - Math.exp(-dt*16);
+    for (const m of g.mons) { if (m.tx !== undefined) { m.x += (m.tx - m.x)*k; m.y += (m.ty - m.y)*k; } }
+    for (const f of g.fx) f.t -= dt; g.fx = g.fx.filter(f => f.t > 0);
+  } else for (let i = 0; i < g.speed; i++) update(dt);
+  if (net.role === 'host') { snapT += dt; if (snapT >= .08) { snapT = 0; if (net.conn && net.conn.open) send(snapshot()); } }
   hudT += dt; if (hudT > .25) { hudT = 0; hud(); }
   draw(time);
 }
 addEventListener('resize', resize);
-newGame(); resize(); requestAnimationFrame(loop);
-$('st').style.display = 'none';
+newGame(false); resize(); requestAnimationFrame(loop);
+$('st').style.display = 'none';       // скрипт запущен — убираем подсказку
 </script>
 </body>
 </html>
